@@ -30,7 +30,12 @@ No test framework is set up. Before submitting, run `npm run build` and exercise
 History uses short imperative subjects. Use short imperative subjects such as `Add cron parser tool`. PRs should describe the change, list manual checks, and include screenshots for UI changes.
 
 ## Security & Configuration Tips
-- All `/api` routes except status, login, register and logout require an admin session; keep new routes behind that check.
-- The first registered user becomes the only admin. Register immediately after deploying.
+- All `/api` routes except status, login, register and logout require a logged-in session; `/api/admin/*` additionally requires the `admin` role. Keep new routes behind these checks.
+- The first registered user becomes the first admin; registration then closes and admins create further users. Register immediately after deploying.
 - Never commit `.dev.vars`, `.wrangler/` or `node_modules/` (already in `.gitignore`).
 - Pin exact dependency versions (`npm install --save-exact`).
+
+## Users, Permissions & Migrations
+- Roles: `admin` (all tools, manages users) and `user` (tools listed in `permissions`, JSON like `{"tools":["json"]}` or `*`). Tool access is enforced in the UI only; `/api/admin/*` is enforced server-side in `worker/admin.js`.
+- Audit events go through `audit()` in `worker/auth.js`; login throttling uses `login_attempts`.
+- Schema changes to an existing D1 go in `migrations/NNN_*.sql` (run once, not idempotent) and must also be reflected in `schema.sql`. Run the migration with `--remote` before `npm run deploy`.

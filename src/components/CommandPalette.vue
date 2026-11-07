@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { tools } from '../tools/registry'
+import { allowedTools } from '../tools/registry'
 import { auth } from '../auth'
 
 const router = useRouter()
@@ -21,8 +21,8 @@ function score(t, k) {
 
 const results = computed(() => {
   const k = q.value.trim().toLowerCase()
-  if (!k) return tools
-  return tools
+  if (!k) return allowedTools(auth.user)
+  return allowedTools(auth.user)
     .map((t) => [t, score(t, k)])
     .filter(([, s]) => s > 0)
     .sort((a, b) => b[1] - a[1])
@@ -106,3 +106,4 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .palette { width: min(640px, 92vw); overflow: hidden; }
 .palette-list { max-height: 50vh; overflow-y: auto; }
 </style>
+

@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { tools } from '../tools/registry'
+import { allowedTools } from '../tools/registry'
+import { auth } from '../auth'
 
 const router = useRouter()
 const keyword = ref('')
@@ -11,7 +12,7 @@ const cardEls = ref({}) // id -> 元素
 
 const filtered = computed(() => {
   const k = keyword.value.trim().toLowerCase()
-  return tools.filter((t) => !k || `${t.name}${t.desc}${t.category}${t.id}`.toLowerCase().includes(k))
+  return allowedTools(auth.user).filter((t) => !k || `${t.name}${t.desc}${t.category}${t.id}`.toLowerCase().includes(k))
 })
 
 const groups = computed(() => {
@@ -110,3 +111,4 @@ onMounted(() => searchEl.value?.focus())
   box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25) !important;
 }
 </style>
+

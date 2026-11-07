@@ -4,9 +4,9 @@ export const auth = reactive({ user: null, registerOpen: false, loaded: false })
 // 路由切换(含懒加载页面下载)状态,用于显示顶部进度条
 export const nav = reactive({ loading: false })
 
-export async function api(path, { body } = {}) {
+export async function api(path, { body, method } = {}) {
   const res = await fetch(path, {
-    method: body ? 'POST' : 'GET',
+    method: method || (body ? 'POST' : 'GET'),
     headers: body ? { 'Content-Type': 'application/json' } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   })

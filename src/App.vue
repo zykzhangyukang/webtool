@@ -38,6 +38,12 @@ async function onLogout() {
         <span class="text-body-secondary small">
           <i class="bi bi-person-circle me-1"></i>{{ auth.user.username }}
         </span>
+        <router-link v-if="auth.user.role === 'admin' && !auth.user.must_change_pw" class="btn btn-sm btn-outline-secondary" to="/admin/users">
+          <i class="bi bi-people me-1"></i>用户管理
+        </router-link>
+        <router-link class="btn btn-sm btn-outline-secondary" to="/change-password" title="修改密码">
+          <i class="bi bi-key"></i>
+        </router-link>
         <button class="btn btn-sm btn-outline-secondary" @click="onLogout">退出</button>
       </div>
     </div>

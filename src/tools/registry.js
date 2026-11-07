@@ -97,3 +97,10 @@ export const tools = [
     component: () => import('../views/tools/YamlTool.vue'),
   },
 ]
+// 当前用户可用的工具('*' 表示全部)
+export function allowedTools(user) {
+  if (!user) return []
+  const p = user.permissions
+  if (user.role === 'admin' || p === '*') return tools
+  return tools.filter((t) => p?.tools?.includes(t.id))
+}

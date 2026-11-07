@@ -7,7 +7,22 @@ import {
   currentUser,
   destroySession,
   purgeExpired,
+  tokenFrom,
+  destroyUserSessions,
+  audit,
+  isLocked,
+  recordFail,
+  clearFails,
 } from './auth.js'
+import { handleAdmin } from './admin.js'
+
+// 返回给前端的用户信息
+const pubSelf = (u) => ({
+  username: u.username,
+  role: u.role,
+  must_change_pw: u.must_change_pw,
+  permissions: u.permissions === '*' ? '*' : JSON.parse(u.permissions),
+})
 
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
@@ -43,7 +58,7 @@ export default {
       const row = await db.prepare('SELECT COUNT(*) AS n FROM users').first()
       const user = await currentUser(db, request)
       const { renewCookie, ...pub } = user || {}
-      return json({ registerOpen: row.n === 0, user: user ? pub : null }, 200, renewCookie ? { 'Set-Cookie': renewCookie } : {})
+      return json({ registerOpen: row.n === 0, user: user ? pubSelf(pub) : null }, 200, renewCookie ? { 'Set-Cookie': renewCookie } : {})
     }
 
     if (pathname === '/api/register' && request.method === 'POST') {
@@ -67,7 +82,7 @@ export default {
       if (!res.meta.changes) return json({ error: '注册已关闭,管理员已存在' }, 403)
 
       const token = await createSession(db, res.meta.last_row_id)
-      return json({ user: { username: creds.username, role: 'admin' } }, 200, {
+      return json({ user: { username: creds.username, role: 'admin', must_change_pw: 0, permissions: '*' } }, 200, {
         'Set-Cookie': cookieOf(token),
       })
     }
@@ -75,16 +90,30 @@ export default {
     if (pathname === '/api/login' && request.method === 'POST') {
       const creds = await readCreds(request)
       if (!creds) return json({ error: '请求格式错误' }, 400)
+      const ip = request.headers.get('CF-Connecting-IP') || 'local'
+      const key = `${creds.username.toLowerCase()}|${ip}`
+      if (await isLocked(db, key)) {
+        await audit(db, { username: creds.username }, 'login.locked', creds.username, { ip })
+        return json({ error: '失败次数过多,请 10 分钟后再试' }, 429)
+      }
       const user = await db
-        .prepare('SELECT id, username, role, password_hash, salt FROM users WHERE username = ?')
+        .prepare('SELECT id, username, role, password_hash, salt, status, expires_at, must_change_pw, permissions FROM users WHERE username = ?')
         .bind(creds.username)
         .first()
       // 用户不存在时也做一次哈希,让响应耗时接近
       const hash = await hashPassword(creds.password, user?.salt ?? newSalt())
-      if (!user || !safeEqual(hash, user.password_hash)) return json({ error: '用户名或密码错误' }, 401)
+      const now = Math.floor(Date.now() / 1000)
+      const ok = user && safeEqual(hash, user.password_hash) && user.status === 'active' && !(user.expires_at && user.expires_at <= now)
+      if (!ok) {
+        await recordFail(db, key)
+        await audit(db, { id: user?.id, username: creds.username }, 'login.fail', creds.username, { ip })
+        return json({ error: '用户名或密码错误' }, 401)
+      }
+      await clearFails(db, key)
+      await audit(db, user, 'login.ok', user.username, { ip })
 
       const token = await createSession(db, user.id)
-      return json({ user: { username: user.username, role: user.role } }, 200, {
+      return json({ user: pubSelf(user) }, 200, {
         'Set-Cookie': cookieOf(token),
       })
     }
@@ -94,11 +123,40 @@ export default {
       return json({ ok: true }, 200, { 'Set-Cookie': cookieOf('', 0) })
     }
 
-    // 其余 /api 接口都需要管理员登录
+    // 其余 /api 接口都需要登录
     const user = await currentUser(db, request)
-    if (!user || user.role !== 'admin') return json({ error: '未登录' }, 401)
+    if (!user) return json({ error: '未登录' }, 401)
+    const renew = user.renewCookie ? { 'Set-Cookie': user.renewCookie } : {}
 
-    if (pathname === '/api/ping') return json({ ok: true, user: user.username }, 200, user.renewCookie ? { 'Set-Cookie': user.renewCookie } : {})
+    // 修改密码:需旧密码,成功后清掉其他会话
+    if (pathname === '/api/change-password' && request.method === 'POST') {
+      let b
+      try { b = await request.json() } catch { return json({ error: '请求格式错误' }, 400) }
+      const row = await db.prepare('SELECT password_hash, salt FROM users WHERE id = ?').bind(user.id).first()
+      if (!safeEqual(await hashPassword(String(b?.oldPassword ?? ''), row.salt), row.password_hash))
+        return json({ error: '旧密码错误' }, 400)
+      const np = b?.newPassword
+      if (typeof np !== 'string' || np.length < 8 || np.length > 128) return json({ error: '新密码长度需为 8-128 位' }, 400)
+      if (np === b.oldPassword) return json({ error: '新密码不能与旧密码相同' }, 400)
+      const salt = newSalt()
+      await db
+        .prepare('UPDATE users SET password_hash = ?, salt = ?, must_change_pw = 0 WHERE id = ?')
+        .bind(await hashPassword(np, salt), salt, user.id)
+        .run()
+      await destroyUserSessions(db, user.id, tokenFrom(request))
+      await audit(db, user, 'user.change_password', user.username)
+      return json({ ok: true }, 200, renew)
+    }
+
+    // 必须先改密码
+    if (user.must_change_pw) return json({ error: '请先修改密码', code: 'MUST_CHANGE_PW' }, 403)
+
+    if (pathname.startsWith('/api/admin/')) {
+      if (user.role !== 'admin') return json({ error: '无权限' }, 403)
+      return handleAdmin({ request, url, db, user, json })
+    }
+
+    if (pathname === '/api/ping') return json({ ok: true, user: user.username }, 200, renew)
 
     return json({ error: '接口不存在' }, 404)
   },
