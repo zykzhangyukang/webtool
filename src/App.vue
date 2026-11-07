@@ -1,6 +1,11 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import { auth, nav, logout } from './auth'
+import { theme, cycleTheme } from './theme'
+import CommandPalette from './components/CommandPalette.vue'
+
+const themeIcon = { auto: 'bi-circle-half', light: 'bi-sun', dark: 'bi-moon-stars' }
+const themeLabel = { auto: '跟随系统', light: '浅色', dark: '深色' }
 
 const router = useRouter()
 
@@ -12,12 +17,24 @@ async function onLogout() {
 
 <template>
   <div v-if="nav.loading" class="nav-progress"></div>
+  <CommandPalette />
   <nav class="navbar navbar-expand bg-body-tertiary border-bottom">
     <div class="container">
       <router-link class="navbar-brand fw-semibold" to="/">
         <i class="bi bi-tools me-2"></i>WebTool
       </router-link>
-      <div v-if="auth.user" class="ms-auto d-flex align-items-center gap-3">
+      <div class="ms-auto d-flex align-items-center gap-3">
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          :title="`主题:${themeLabel[theme.mode]}(点击切换)`"
+          :aria-label="`主题:${themeLabel[theme.mode]}`"
+          @click="cycleTheme"
+        >
+          <i :class="['bi', themeIcon[theme.mode]]"></i>
+        </button>
+        <kbd v-if="auth.user" class="d-none d-md-inline" title="命令面板">Ctrl K</kbd>
+      </div>
+      <div v-if="auth.user" class="ms-3 d-flex align-items-center gap-3">
         <span class="text-body-secondary small">
           <i class="bi bi-person-circle me-1"></i>{{ auth.user.username }}
         </span>

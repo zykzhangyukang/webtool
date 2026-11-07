@@ -27,7 +27,7 @@ JavaScript ES modules, 2-space indent, single quotes, no semicolons. Vue files u
 No test framework is set up. Before submitting, run `npm run build` and exercise the changed page manually. For pure logic or Worker routes, verify with a throwaway Node script and delete it afterwards. If adding tests, use Vitest with `*.test.js` beside the source.
 
 ## Commit & Pull Request Guidelines
-This directory is not yet a git repository, so no history exists. Use short imperative subjects such as `Add cron parser tool`. PRs should describe the change, list manual checks, and include screenshots for UI changes.
+History uses short imperative subjects. Use short imperative subjects such as `Add cron parser tool`. PRs should describe the change, list manual checks, and include screenshots for UI changes.
 
 ## Security & Configuration Tips
 - All `/api` routes except status, login, register and logout require an admin session; keep new routes behind that check.

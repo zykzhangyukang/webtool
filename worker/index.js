@@ -6,6 +6,7 @@ import {
   cookieOf,
   currentUser,
   destroySession,
+  purgeExpired,
 } from './auth.js'
 
 const json = (data, status = 200, headers = {}) =>
@@ -41,7 +42,8 @@ export default {
     if (pathname === '/api/status' && request.method === 'GET') {
       const row = await db.prepare('SELECT COUNT(*) AS n FROM users').first()
       const user = await currentUser(db, request)
-      return json({ registerOpen: row.n === 0, user })
+      const { renewCookie, ...pub } = user || {}
+      return json({ registerOpen: row.n === 0, user: user ? pub : null }, 200, renewCookie ? { 'Set-Cookie': renewCookie } : {})
     }
 
     if (pathname === '/api/register' && request.method === 'POST') {
@@ -96,8 +98,12 @@ export default {
     const user = await currentUser(db, request)
     if (!user || user.role !== 'admin') return json({ error: '未登录' }, 401)
 
-    if (pathname === '/api/ping') return json({ ok: true, user: user.username })
+    if (pathname === '/api/ping') return json({ ok: true, user: user.username }, 200, user.renewCookie ? { 'Set-Cookie': user.renewCookie } : {})
 
     return json({ error: '接口不存在' }, 404)
+  },
+
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(purgeExpired(env.DB))
   },
 }

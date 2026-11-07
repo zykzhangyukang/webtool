@@ -55,13 +55,30 @@ export async function currentUser(db, request) {
   const now = Math.floor(Date.now() / 1000)
   return db
     .prepare(
-      `SELECT u.id, u.username, u.role FROM sessions s
+      `SELECT u.id, u.username, u.role, s.expires_at FROM sessions s
        JOIN users u ON u.id = s.user_id
        WHERE s.token_hash = ? AND s.expires_at > ?`,
     )
     .bind(await sha256(token), now)
     .first()
+    .then(async (row) => {
+      if (!row) return null
+      const { expires_at, ...user } = row
+      // 滑动续期:剩余不足一半有效期时顺延,并带回新的 Cookie 过期时间
+      if (expires_at - now < SESSION_TTL / 2) {
+        await db
+          .prepare('UPDATE sessions SET expires_at = ? WHERE token_hash = ?')
+          .bind(now + SESSION_TTL, await sha256(token))
+          .run()
+        user.renewCookie = cookieOf(token)
+      }
+      return user
+    })
 }
+
+// 定时清理过期会话
+export const purgeExpired = (db) =>
+  db.prepare('DELETE FROM sessions WHERE expires_at <= ?').bind(Math.floor(Date.now() / 1000)).run()
 
 export async function destroySession(db, request) {
   const token = tokenFrom(request)

@@ -5,6 +5,9 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import App from './App.vue'
 import router from './router'
 import { loadStatus } from './auth'
+import { initTheme } from './theme'
+
+initTheme()
 
 // 先拿到登录状态再挂载,路由守卫才能正确判断
 loadStatus().finally(() => {

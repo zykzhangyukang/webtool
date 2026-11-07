@@ -74,10 +74,37 @@ const tsResult = computed(() => {
     unit,
     text: fmtIn(ms, tsZone.value),
     iso: d.toISOString(),
+    rfc: d.toUTCString(),
+    rel: relative(ms),
     seconds: Math.floor(ms / 1000),
     millis: Math.floor(ms),
   }
 })
+
+// 相对当前时间的描述,如"3 小时前"
+function relative(ms) {
+  const diff = Math.round((ms - Date.now()) / 1000)
+  const abs = Math.abs(diff)
+  const units = [[86400 * 365, '年'], [86400 * 30, '个月'], [86400, '天'], [3600, '小时'], [60, '分钟'], [1, '秒']]
+  const [size, name] = units.find(([s]) => abs >= s) || [1, '秒']
+  if (abs < 1) return '现在'
+  return `${Math.floor(abs / size)} ${name}${diff < 0 ? '前' : '后'}`
+}
+
+// 快捷设置:当天 0 点、N 小时前等(基于所选时区)
+const quick = [
+  ['今天 0 点', () => dayStart(0)],
+  ['明天 0 点', () => dayStart(1)],
+  ['昨天 0 点', () => dayStart(-1)],
+  ['1 小时前', () => Date.now() - 3600e3],
+  ['24 小时前', () => Date.now() - 86400e3],
+  ['7 天前', () => Date.now() - 7 * 86400e3],
+]
+function dayStart(offsetDays) {
+  const o = partsIn(Date.now(), tsZone.value)
+  return wallToMs(+o.year, +o.month, +o.day + offsetDays, 0, 0, 0, tsZone.value)
+}
+const applyQuick = (fn) => (tsInput.value = String(Math.floor(fn() / 1000)))
 
 // 日期 -> 时间戳。选择器的值是"所选时区"的墙上时间
 const dateZone = ref('local')
@@ -140,6 +167,11 @@ const useNowTs = () => (tsInput.value = String(Math.floor(Date.now() / 1000)))
         <input v-model="tsInput" class="form-control font-monospace" placeholder="如 1700000000 或 1700000000000" aria-label="时间戳" />
         <button class="btn btn-outline-secondary" @click="useNowTs">现在</button>
       </div>
+      <div class="d-flex flex-wrap gap-1 mb-2">
+        <button v-for="[name, fn] in quick" :key="name" class="btn btn-sm btn-outline-secondary" @click="applyQuick(fn)">
+          {{ name }}
+        </button>
+      </div>
       <div class="d-flex gap-2 mb-3">
         <select v-model="tsUnit" class="form-select" aria-label="单位">
           <option value="auto">单位:自动识别</option>
@@ -159,6 +191,8 @@ const useNowTs = () => (tsInput.value = String(Math.floor(Date.now() / 1000)))
           </button>
         </li>
         <li class="list-group-item small">ISO:{{ tsResult.iso }}</li>
+        <li class="list-group-item small">RFC 2822:{{ tsResult.rfc }}</li>
+        <li class="list-group-item small">相对现在:{{ tsResult.rel }}</li>
         <li class="list-group-item small">按{{ tsResult.unit === 's' ? '秒' : '毫秒' }}解析 · 秒 {{ tsResult.seconds }} · 毫秒 {{ tsResult.millis }}</li>
       </ul>
     </div>

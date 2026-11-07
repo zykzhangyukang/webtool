@@ -160,9 +160,9 @@ onBeforeUnmount(() => {
       <option value="tab">缩进 Tab</option>
     </select>
     <div class="btn-group ms-auto" role="group" aria-label="视图模式">
-      <button class="btn btn-outline-dark" @click="switchMode('text')">文本</button>
-      <button class="btn btn-outline-dark" @click="switchMode('tree')">树形</button>
-      <button class="btn btn-outline-dark" @click="switchMode('table')">表格</button>
+      <button class="btn btn-outline-secondary" @click="switchMode('text')">文本</button>
+      <button class="btn btn-outline-secondary" @click="switchMode('tree')">树形</button>
+      <button class="btn btn-outline-secondary" @click="switchMode('table')">表格</button>
     </div>
   </div>
 

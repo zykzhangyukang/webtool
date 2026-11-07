@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Cron } from 'croner'
 import cronstrue from 'cronstrue/i18n'
 
@@ -35,6 +35,37 @@ const result = computed(() => {
     return { error: e.message }
   }
 })
+
+// 距下一次触发的倒计时
+const now = ref(Date.now())
+let timer
+onMounted(() => (timer = setInterval(() => (now.value = Date.now()), 1000)))
+onUnmounted(() => clearInterval(timer))
+const countdown = computed(() => {
+  const first = result.value.runs?.[0]
+  if (!first) return ''
+  let s = Math.max(0, Math.round((new Date(first.replace(' ', 'T')).getTime() - now.value) / 1000))
+  const d = Math.floor(s / 86400)
+  s %= 86400
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d ? d + ' 天 ' : ''}${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`
+})
+
+// Spring 的 @Scheduled 只支持 6 位(秒 分 时 日 月 周)
+const fieldCount = computed(() => expr.value.trim().split(/\s+/).filter(Boolean).length)
+const snippets = computed(() => {
+  const e = expr.value.trim().replace(/"/g, '\\"')
+  return [
+    ['Spring @Scheduled', `@Scheduled(cron = "${e}")\npublic void job() {\n    // ...\n}`],
+    ['Quartz', `CronScheduleBuilder.cronSchedule("${e}")`],
+  ]
+})
+const copied = ref('')
+async function copy(text, key) {
+  await navigator.clipboard.writeText(text)
+  copied.value = key
+  setTimeout(() => (copied.value = ''), 1200)
+}
 </script>
 
 <template>
@@ -49,7 +80,22 @@ const result = computed(() => {
   </div>
   <div v-if="result.error" class="alert alert-danger py-2">{{ result.error }}</div>
   <template v-else>
-    <div class="alert alert-success py-2"><i class="bi bi-chat-left-text me-2"></i>{{ result.desc }}</div>
+    <div class="alert alert-success py-2 d-flex justify-content-between flex-wrap gap-2">
+      <span><i class="bi bi-chat-left-text me-2"></i>{{ result.desc }}</span>
+      <span class="font-monospace">下次触发倒计时 {{ countdown }}</span>
+    </div>
+    <div v-if="fieldCount === 5" class="alert alert-warning py-2 small">
+      这是标准 5 位格式(分 时 日 月 周)。Spring 的 @Scheduled 和 Quartz 需要 6 位,请在最前面补上秒位。
+    </div>
+    <div v-for="[name, code] in snippets" :key="name" class="mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="small text-body-secondary">{{ name }}</span>
+        <button class="btn btn-sm btn-outline-secondary" @click="copy(code, name)">
+          {{ copied === name ? '已复制' : '复制' }}
+        </button>
+      </div>
+      <pre class="form-control font-monospace small mb-0">{{ code }}</pre>
+    </div>
     <div class="d-flex align-items-center gap-2 mb-2">
       <label class="form-label mb-0" for="cnt">未来触发时间</label>
       <input id="cnt" v-model.number="count" type="number" min="1" max="50" class="form-control form-control-sm" style="width: 5rem" />
