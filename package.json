@@ -1,0 +1,26 @@
+{
+  "name": "webtool",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "cf:dev": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "dependencies": {
+    "bootstrap": "5.3.8",
+    "bootstrap-icons": "1.13.2",
+    "vanilla-jsoneditor": "3.13.0",
+    "vue": "3.5.45",
+    "vue-router": "5.4.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261107.1",
+    "@vitejs/plugin-vue": "6.0.10",
+    "vite": "8.3.6",
+    "wrangler": "4.158.0"
+  }
+}
