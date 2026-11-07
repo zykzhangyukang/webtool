@@ -1,5 +1,4 @@
 <script setup>
-import SnippetBar from '../../components/SnippetBar.vue'
 import { ref, computed } from 'vue'
 import { format } from 'sql-formatter'
 import { useCopy } from '../../tools/useCopy.js'
@@ -26,7 +25,6 @@ const javaBlock = computed(() => (result.value.text ? `String sql = """\n${resul
 
 <template>
   <h1 class="h4 mb-3">SQL 格式化</h1>
-  <SnippetBar tool="sql" :get-content="() => input.value" :set-content="(t) => (input.value = t)" />
   <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
     <select v-model="dialect" class="form-select w-auto" aria-label="方言">
       <option v-for="d in dialects" :key="d" :value="d">{{ d }}</option>

@@ -1,5 +1,4 @@
 <script setup>
-import SnippetBar from '../../components/SnippetBar.vue'
 import { ref, computed } from 'vue'
 import { parse, stringify } from 'yaml'
 import { useCopy } from '../../tools/useCopy.js'
@@ -60,7 +59,6 @@ const result = computed(() => {
 
 <template>
   <h1 class="h4 mb-3">YAML / JSON / Properties</h1>
-  <SnippetBar tool="yaml" :get-content="() => input.value" :set-content="(t) => (input.value = t)" />
   <div class="btn-group mb-3" role="group" aria-label="转换方向">
     <button v-for="[k, label] in modes" :key="k" class="btn btn-outline-primary" :class="{ active: mode === k }" @click="mode = k">
       {{ label }}

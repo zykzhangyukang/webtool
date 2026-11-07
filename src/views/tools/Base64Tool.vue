@@ -1,5 +1,4 @@
 <script setup>
-import SnippetBar from '../../components/SnippetBar.vue'
 import { ref } from 'vue'
 import { useCopy } from '../../tools/useCopy.js'
 
@@ -49,7 +48,6 @@ async function onFile(e) {
 
 <template>
   <h1 class="h4 mb-3">Base64 / Hex 编解码</h1>
-  <SnippetBar tool="base64" :get-content="() => input.value" :set-content="(t) => (input.value = t)" />
   <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
     <button class="btn btn-primary" @click="encode">编码</button>
     <button class="btn btn-outline-primary" @click="decode(false)">解码为文本</button>

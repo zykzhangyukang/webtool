@@ -15,7 +15,6 @@ import {
   clearFails,
 } from './auth.js'
 import { handleAdmin } from './admin.js'
-import { handleSnippets, snippetLimit } from './snippets.js'
 
 // 返回给前端的用户信息
 const pubSelf = (u) => ({
@@ -23,7 +22,6 @@ const pubSelf = (u) => ({
   role: u.role,
   must_change_pw: u.must_change_pw,
   permissions: u.permissions === '*' ? '*' : JSON.parse(u.permissions),
-  snippetMax: snippetLimit(u),
 })
 
 const json = (data, status = 200, headers = {}) =>
@@ -84,7 +82,7 @@ export default {
       if (!res.meta.changes) return json({ error: '注册已关闭,管理员已存在' }, 403)
 
       const token = await createSession(db, res.meta.last_row_id)
-      return json({ user: { username: creds.username, role: 'admin', must_change_pw: 0, permissions: '*', snippetMax: 200 } }, 200, {
+      return json({ user: { username: creds.username, role: 'admin', must_change_pw: 0, permissions: '*' } }, 200, {
         'Set-Cookie': cookieOf(token),
       })
     }
@@ -160,12 +158,6 @@ export default {
 
     if (pathname === '/api/ping') return json({ ok: true, user: user.username }, 200, renew)
 
-    if (pathname.startsWith('/api/snippets')) {
-      const res = await handleSnippets({ request, url, db, user, json })
-      if (user.renewCookie) res.headers.append('Set-Cookie', user.renewCookie)
-      return res
-    }
-
     return json({ error: '接口不存在' }, 404)
   },
 
@@ -173,4 +165,3 @@ export default {
     ctx.waitUntil(purgeExpired(env.DB))
   },
 }
-

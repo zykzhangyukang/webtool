@@ -2,14 +2,12 @@ import { hashPassword, newSalt, destroyUserSessions, audit } from './auth.js'
 
 const TOOL_IDS = ['json', 'sql', 'yaml', 'timestamp', 'cron', 'base64', 'uuid', 'jwt', 'hash', 'url', 'regex', 'diff']
 
-// 校验并规范化权限:'*' 或 {"tools":[...],"snippets":{"max":N}}
+// 校验并规范化权限:'*' 或 {"tools":[...]}
 function normPerms(p) {
   if (p === '*') return '*'
   if (!p || !Array.isArray(p.tools)) return null
   const tools = [...new Set(p.tools)].filter((t) => TOOL_IDS.includes(t))
-  const max = p.snippets?.max
-  const snippets = Number.isInteger(max) && max > 0 ? { max: Math.min(max, 1000) } : undefined
-  return JSON.stringify(snippets ? { tools, snippets } : { tools })
+  return JSON.stringify({ tools })
 }
 
 const validName = (s) => typeof s === 'string' && /^[A-Za-z0-9_]{3,32}$/.test(s)
