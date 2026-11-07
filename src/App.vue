@@ -1,6 +1,6 @@
 <script setup>
 import { useRouter } from 'vue-router'
-import { auth, logout } from './auth'
+import { auth, nav, logout } from './auth'
 
 const router = useRouter()
 
@@ -11,6 +11,7 @@ async function onLogout() {
 </script>
 
 <template>
+  <div v-if="nav.loading" class="nav-progress"></div>
   <nav class="navbar navbar-expand bg-body-tertiary border-bottom">
     <div class="container">
       <router-link class="navbar-brand fw-semibold" to="/">
@@ -28,3 +29,16 @@ async function onLogout() {
     <router-view />
   </main>
 </template>
+
+<style>
+/* 延迟 200ms 才出现,快速切换时不会闪烁 */
+.nav-progress {
+  position: fixed; top: 0; left: 0; height: 3px; width: 0; z-index: 2000;
+  background: #0d6efd; opacity: 0;
+  animation: nav-grow 8s cubic-bezier(.1, .6, .2, 1) .2s forwards;
+}
+@keyframes nav-grow {
+  from { width: 0; opacity: 1; }
+  to { width: 90%; opacity: 1; }
+}
+</style>

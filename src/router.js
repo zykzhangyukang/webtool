@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { auth } from './auth'
+import { auth, nav } from './auth'
 import { tools } from './tools/registry'
 
 const router = createRouter({
@@ -18,8 +18,15 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
+  nav.loading = true
   if (to.meta.requiresAuth && !auth.user) return { name: 'login', query: { redirect: to.fullPath } }
   if (to.name === 'login' && auth.user) return { name: 'home' }
+})
+router.afterEach(() => {
+  nav.loading = false
+})
+router.onError(() => {
+  nav.loading = false
 })
 
 export default router

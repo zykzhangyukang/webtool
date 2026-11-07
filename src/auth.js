@@ -1,6 +1,8 @@
 import { reactive } from 'vue'
 
 export const auth = reactive({ user: null, registerOpen: false, loaded: false })
+// 路由切换(含懒加载页面下载)状态,用于显示顶部进度条
+export const nav = reactive({ loading: false })
 
 export async function api(path, { body } = {}) {
   const res = await fetch(path, {

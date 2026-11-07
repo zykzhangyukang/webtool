@@ -2,6 +2,7 @@
   "name": "webtool",
   "main": "worker/index.js",
   "compatibility_date": "2026-11-01",
+  "observability": { "enabled": true },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
