@@ -5,10 +5,24 @@ import { diffLines, diffWordsWithSpace } from 'diff'
 const a = ref('{\n  "name": "webtool",\n  "version": "1.0"\n}')
 const b = ref('{\n  "name": "webtool",\n  "version": "1.1",\n  "private": true\n}')
 const ignoreWs = ref(false)
+const jsonMode = ref(false)
+
+// JSON 模式:先格式化并按 key 排序,忽略格式与字段顺序差异;解析失败则原样比较
+function norm(s) {
+  if (!jsonMode.value) return s
+  try {
+    const sort = (x) =>
+      Array.isArray(x) ? x.map(sort)
+        : x && typeof x === 'object' ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, sort(x[k])])) : x
+    return JSON.stringify(sort(JSON.parse(s)), null, 2)
+  } catch {
+    return s
+  }
+}
 
 // 行级 diff;相邻的删除/新增块再做词级 diff,方便看行内改动
 const rows = computed(() => {
-  const chunks = diffLines(a.value, b.value, { ignoreWhitespace: ignoreWs.value })
+  const chunks = diffLines(norm(a.value), norm(b.value), { ignoreWhitespace: ignoreWs.value })
   const out = []
   for (let i = 0; i < chunks.length; i++) {
     const c = chunks[i]
@@ -46,6 +60,10 @@ const stat = computed(() => ({
     <div class="form-check mb-0">
       <input id="dws" v-model="ignoreWs" type="checkbox" class="form-check-input" />
       <label for="dws" class="form-check-label">忽略空白差异</label>
+    </div>
+    <div class="form-check mb-0">
+      <input id="djs" v-model="jsonMode" type="checkbox" class="form-check-input" />
+      <label for="djs" class="form-check-label">JSON 模式(忽略格式和 key 顺序)</label>
     </div>
     <span class="text-success font-monospace">+{{ stat.add }}</span>
     <span class="text-danger font-monospace">-{{ stat.del }}</span>

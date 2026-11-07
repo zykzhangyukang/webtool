@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { createJSONEditor, Mode } from 'vanilla-jsoneditor'
+import { jsonrepair } from 'jsonrepair'
 import { jsonToJava } from '../../tools/jsonToJava'
 
 const host = ref(null)
@@ -91,6 +92,37 @@ function unescapeText() {
 
 const switchMode = (mode) => editor.updateProps({ mode })
 
+// 修复常见问题:单引号、缺引号、注释、尾逗号、截断等
+function repair() {
+  try {
+    const fixed = jsonrepair(getText())
+    setText(JSON.stringify(JSON.parse(fixed), null, spaces()))
+    notify('success', '已自动修复并格式化')
+  } catch (e) {
+    notify('danger', `无法修复:${e.message}`)
+  }
+}
+
+function download() {
+  const url = URL.createObjectURL(new Blob([getText()], { type: 'application/json' }))
+  const a = Object.assign(document.createElement('a'), { href: url, download: 'data.json' })
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+async function openFile(e) {
+  const f = e.target.files[0]
+  if (f) setText(await f.text())
+  e.target.value = ''
+}
+
+// Ctrl/Cmd+Enter 格式化,Ctrl/Cmd+Shift+M 压缩
+function onKey(e) {
+  if (!(e.ctrlKey || e.metaKey)) return
+  if (e.key === 'Enter') (e.preventDefault(), format())
+  else if (e.shiftKey && e.key.toLowerCase() === 'm') (e.preventDefault(), minify())
+}
+
 async function copy() {
   await navigator.clipboard.writeText(getText())
   notify('success', '已复制到剪贴板')
@@ -118,6 +150,7 @@ async function copyJava() {
 }
 
 onMounted(() => {
+  window.addEventListener('keydown', onKey)
   const saved = localStorage.getItem(STORAGE_KEY)
   editor = createJSONEditor({
     target: host.value,
@@ -137,6 +170,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKey)
   clearTimeout(saveTimer)
   editor?.destroy()
 })
@@ -146,14 +180,20 @@ onBeforeUnmount(() => {
   <h1 class="h4 mb-3">JSON 工具</h1>
 
   <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
-    <button class="btn btn-primary" @click="format"><i class="bi bi-text-indent-left me-1"></i>格式化</button>
-    <button class="btn btn-outline-primary" @click="minify">压缩</button>
+    <button class="btn btn-primary" title="Ctrl+Enter" @click="format"><i class="bi bi-text-indent-left me-1"></i>格式化</button>
+    <button class="btn btn-outline-primary" title="Ctrl+Shift+M" @click="minify">压缩</button>
     <button class="btn btn-outline-secondary" @click="validate">校验</button>
+    <button class="btn btn-outline-secondary" @click="repair"><i class="bi bi-magic me-1"></i>修复</button>
     <button class="btn btn-outline-secondary" @click="sortKeys">Key 排序</button>
     <button class="btn btn-outline-secondary" @click="escapeText">转义</button>
     <button class="btn btn-outline-secondary" @click="unescapeText">反转义</button>
     <button class="btn btn-outline-success" @click="openJava"><i class="bi bi-cup-hot me-1"></i>转 Java 类</button>
     <button class="btn btn-outline-secondary" @click="copy"><i class="bi bi-clipboard me-1"></i>复制</button>
+    <button class="btn btn-outline-secondary" @click="download"><i class="bi bi-download me-1"></i>下载</button>
+    <label class="btn btn-outline-secondary mb-0">
+      <i class="bi bi-folder2-open me-1"></i>打开
+      <input type="file" accept=".json,.txt,application/json" hidden @change="openFile" />
+    </label>
     <select v-model="indent" class="form-select w-auto" aria-label="缩进">
       <option value="2">缩进 2</option>
       <option value="4">缩进 4</option>
@@ -170,7 +210,7 @@ onBeforeUnmount(() => {
 
   <div ref="host" class="json-host border rounded"></div>
   <p class="text-body-secondary small mt-2 mb-0">
-    内容只在浏览器本地处理,缓存在本机 localStorage。编辑器自带搜索、撤销、JSON 修复和 JSONPath 查询。
+    内容只在浏览器本地处理,缓存在本机 localStorage。快捷键:Ctrl+Enter 格式化,Ctrl+Shift+M 压缩。编辑器菜单里有 JSONPath / JMESPath 查询、过滤和排序。
   </p>
 
   <div v-if="javaOpen" class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" style="background: rgba(0, 0, 0, 0.5)">
