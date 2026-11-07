@@ -1,4 +1,5 @@
 <script setup>
+import SnippetBar from '../../components/SnippetBar.vue'
 import { ref, computed } from 'vue'
 import { useCopy } from '../../tools/useCopy.js'
 
@@ -39,6 +40,7 @@ const parsed = computed(() => {
 
 <template>
   <h1 class="h4 mb-3">URL 编解码 / 解析</h1>
+  <SnippetBar tool="url" :get-content="() => input.value" :set-content="(t) => (input.value = t)" />
   <label class="form-label" for="uin">输入</label>
   <textarea id="uin" v-model="input" class="form-control font-monospace mb-2" rows="3" spellcheck="false"></textarea>
   <div class="d-flex flex-wrap align-items-center gap-2 mb-3">

@@ -35,9 +35,10 @@ function openForm(u) {
         username: u.username,
         role: u.role,
         tools: u.permissions === '*' ? tools.map((t) => t.id) : [...u.permissions.tools],
+        snippetMax: u.permissions === '*' ? 0 : (u.permissions.snippets?.max ?? 0),
         expires: toLocal(u.expires_at),
       }
-    : { id: null, username: '', password: '', role: 'user', tools: [], expires: '' }
+    : { id: null, username: '', password: '', role: 'user', tools: [], snippetMax: 0, expires: '' }
 }
 
 function toggleGroup(items, on) {
@@ -68,7 +69,7 @@ async function run(fn, ok) {
 
 function save() {
   const f = form.value
-  const permissions = f.role === 'admin' ? '*' : { tools: f.tools }
+  const permissions = f.role === 'admin' ? '*' : { tools: f.tools, snippets: { max: f.snippetMax || 0 } }
   const body = { role: f.role, permissions, expires_at: fromLocal(f.expires) }
   return run(async () => {
     if (f.id) await api(`/api/admin/users/${f.id}`, { method: 'PATCH', body })
@@ -185,6 +186,10 @@ function showTab(t) {
                 </select>
               </div>
               <div class="col-md-6"><label class="form-label">到期时间(留空为永久)</label><input v-model="form.expires" type="datetime-local" class="form-control" /></div>
+            </div>
+            <div v-if="form.role !== 'admin'" class="mb-3">
+              <label class="form-label" for="smax">片段库条数上限(0 为不可保存)</label>
+              <input id="smax" v-model.number="form.snippetMax" type="number" min="0" max="1000" class="form-control w-auto" />
             </div>
             <div v-if="form.role !== 'admin'">
               <div class="d-flex align-items-center mb-2">

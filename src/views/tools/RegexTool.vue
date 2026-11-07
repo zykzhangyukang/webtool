@@ -1,4 +1,5 @@
 <script setup>
+import SnippetBar from '../../components/SnippetBar.vue'
 import { ref, computed } from 'vue'
 
 const pattern = ref('(\\d{4})-(\\d{2})-(\\d{2})')
@@ -57,6 +58,7 @@ const parts = computed(() => {
 
 <template>
   <h1 class="h4 mb-3">正则测试</h1>
+  <SnippetBar tool="regex" :get-content="() => pattern.value" :set-content="(t) => (pattern.value = t)" />
   <p class="text-body-secondary small">使用浏览器的 JavaScript 正则引擎,与 Java 的少数语法(如 possessive 量词、\\p{...} 部分类别)可能不同。</p>
   <div class="row g-2 mb-2">
     <div class="col">

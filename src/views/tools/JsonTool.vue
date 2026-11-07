@@ -1,4 +1,5 @@
 <script setup>
+import SnippetBar from '../../components/SnippetBar.vue'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { createJSONEditor, Mode } from 'vanilla-jsoneditor'
 import { jsonrepair } from 'jsonrepair'
@@ -178,6 +179,7 @@ onBeforeUnmount(() => {
 
 <template>
   <h1 class="h4 mb-3">JSON 工具</h1>
+  <SnippetBar tool="json" :get-content="getText" :set-content="setText" />
 
   <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
     <button class="btn btn-primary" title="Ctrl+Enter" @click="format"><i class="bi bi-text-indent-left me-1"></i>格式化</button>

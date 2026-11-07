@@ -1,4 +1,5 @@
 <script setup>
+import SnippetBar from '../../components/SnippetBar.vue'
 import { ref, computed, watch } from 'vue'
 import { jwtDecode } from 'jwt-decode'
 import { compactVerify, importSPKI, importX509, importJWK } from 'jose'
@@ -69,6 +70,7 @@ watch([token, secret, b64Secret], runVerify)
 
 <template>
   <h1 class="h4 mb-3">JWT 解码</h1>
+  <SnippetBar tool="jwt" :get-content="() => token.value" :set-content="(t) => (token.value = t)" />
   <p class="text-body-secondary small">全部在浏览器本地完成,不会上传。填写密钥或公钥后可验证签名。</p>
   <label class="form-label" for="jwt">JWT</label>
   <textarea id="jwt" v-model="token" class="form-control font-monospace mb-3" rows="5" spellcheck="false"></textarea>
