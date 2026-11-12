@@ -13,6 +13,7 @@
   "dependencies": {
     "bootstrap": "5.3.8",
     "bootstrap-icons": "1.13.2",
+    "idb-keyval": "6.3.0",
     "monaco-editor": "0.57.0",
     "ua-parser-js": "1.0.41",
     "vanilla-jsoneditor": "3.13.0",

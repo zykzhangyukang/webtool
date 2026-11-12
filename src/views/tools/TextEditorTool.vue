@@ -1,14 +1,36 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import monaco from '../../tools/monaco'
+import { get, set } from 'idb-keyval'
 
 const host = ref(null)
 const pos = ref('Ln 1, Col 1')
 const stat = ref('')
 const wrap = ref(true)
+// 内容存 IndexedDB(异步、容量大);旧版本存在 localStorage,首次打开时迁移
 const STORAGE_KEY = 'webtool.editor.content'
 let editor
 let saveTimer
+let disposed = false
+
+async function save() {
+  try {
+    await set(STORAGE_KEY, editor.getValue())
+  } catch (e) {
+    stat.value = '自动保存失败: ' + (e.message || e)
+  }
+}
+
+async function restore() {
+  let saved = await get(STORAGE_KEY).catch(() => undefined)
+  if (saved === undefined) {
+    saved = localStorage.getItem(STORAGE_KEY) ?? ''
+    if (saved) await set(STORAGE_KEY, saved).catch(() => {})
+    localStorage.removeItem(STORAGE_KEY)
+  }
+  // 加载期间用户已经开始输入就不覆盖
+  if (!disposed && saved && editor.getValue() === '') editor.getModel().setValue(saved)
+}
 
 // 整个文档的内容变换:用 executeEdits,保留撤销历史
 function transform(fn) {
@@ -76,7 +98,7 @@ function updateInfo() {
 onMounted(() => {
   document.documentElement.style.overflow = 'hidden'
   editor = monaco.editor.create(host.value, {
-    value: localStorage.getItem(STORAGE_KEY) ?? '',
+    value: '',
     language: 'plaintext',
     // 查找框浮在内容上方,不把文本顶下去
     find: { addExtraSpaceOnTop: false },
@@ -109,19 +131,22 @@ onMounted(() => {
     updateInfo()
     // 内容只缓存在本机浏览器,不上传
     clearTimeout(saveTimer)
-    saveTimer = setTimeout(() => {
-      const v = editor.getValue()
-      if (v.length < 5_000_000) localStorage.setItem(STORAGE_KEY, v)
-    }, 600)
+    saveTimer = setTimeout(save, 1000)
   })
   editor.onDidChangeCursorSelection(updateInfo)
   updateInfo()
   editor.focus()
+  restore()
 })
 
 onBeforeUnmount(() => {
   document.documentElement.style.overflow = ''
-  clearTimeout(saveTimer)
+  disposed = true
+  // 有未落盘的修改就立刻保存
+  if (saveTimer) {
+    clearTimeout(saveTimer)
+    save()
+  }
   editor?.dispose()
 })
 </script>
