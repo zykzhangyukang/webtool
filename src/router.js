@@ -8,6 +8,7 @@ const router = createRouter({
     { path: '/', name: 'home', component: () => import('./views/Home.vue'), meta: { requiresAuth: true } },
     { path: '/login', name: 'login', component: () => import('./views/Login.vue') },
     { path: '/change-password', name: 'change-password', component: () => import('./views/ChangePassword.vue'), meta: { requiresAuth: true } },
+    { path: '/sessions', name: 'sessions', component: () => import('./views/Sessions.vue'), meta: { requiresAuth: true } },
     { path: '/admin/users', name: 'admin-users', component: () => import('./views/admin/Users.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
     ...tools.map((t) => ({
       path: `/tools/${t.id}`,

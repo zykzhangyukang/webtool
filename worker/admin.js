@@ -1,4 +1,4 @@
-import { hashPassword, newSalt, destroyUserSessions, audit } from './auth.js'
+import { hashPassword, newSalt, destroyUserSessions, killSession, audit } from './auth.js'
 
 const TOOL_IDS = ['json', 'sql', 'yaml', 'timestamp', 'cron', 'base64', 'uuid', 'jwt', 'hash', 'url', 'regex', 'diff']
 
@@ -79,6 +79,29 @@ export async function handleAdmin({ request, url, db, user, json }) {
       .all()
     const total = (await db.prepare('SELECT COUNT(*) AS n FROM audit_log').first()).n
     return json({ items: results, total, page, size })
+  }
+
+  if (pathname === '/api/admin/sessions' && m === 'GET') {
+    const { results } = await db
+      .prepare(
+        `SELECT substr(s.token_hash,1,16) AS sid, s.ua, s.ip, s.created_at, s.last_seen, s.expires_at, u.username
+  FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.expires_at > ? ORDER BY s.last_seen DESC`,
+      )
+      .bind(Math.floor(Date.now() / 1000))
+      .all()
+    return json({ sessions: results.map((s) => ({ ...s, current: s.sid === user.sid })) })
+  }
+
+  const am = pathname.match(/^\/api\/admin\/sessions\/([0-9a-f]{16})$/)
+  if (am && m === 'DELETE') {
+    if (am[1] === user.sid) return json({ error: '不能踢出当前设备' }, 400)
+    const row = await db
+      .prepare("SELECT u.username FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash LIKE ? || '%'")
+      .bind(am[1])
+      .first()
+    if (!row || !(await killSession(db, am[1]))) return json({ error: '会话不存在' }, 404)
+    await audit(db, user, 'session.admin_kick', row.username, { sid: am[1] })
+    return json({ ok: true })
   }
 
   const mm = pathname.match(/^\/api\/admin\/users\/(\d+)(\/reset-password)?$/)

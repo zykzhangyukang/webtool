@@ -44,6 +44,9 @@ async function onLogout() {
         <router-link class="btn btn-sm btn-outline-secondary" to="/change-password" title="修改密码">
           <i class="bi bi-key"></i>
         </router-link>
+        <router-link v-if="!auth.user.must_change_pw" class="btn btn-sm btn-outline-secondary" to="/sessions" title="登录设备">
+          <i class="bi bi-laptop"></i>
+        </router-link>
         <button class="btn btn-sm btn-outline-secondary" @click="onLogout">退出</button>
       </div>
     </div>

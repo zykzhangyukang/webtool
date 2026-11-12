@@ -9,6 +9,7 @@ import {
   purgeExpired,
   tokenFrom,
   destroyUserSessions,
+  killSession,
   audit,
   isLocked,
   recordFail,
@@ -81,7 +82,7 @@ export default {
         .run()
       if (!res.meta.changes) return json({ error: '注册已关闭,管理员已存在' }, 403)
 
-      const token = await createSession(db, res.meta.last_row_id)
+      const token = await createSession(db, res.meta.last_row_id, request)
       return json({ user: { username: creds.username, role: 'admin', must_change_pw: 0, permissions: '*' } }, 200, {
         'Set-Cookie': cookieOf(token),
       })
@@ -112,7 +113,7 @@ export default {
       await clearFails(db, key)
       await audit(db, user, 'login.ok', user.username, { ip })
 
-      const token = await createSession(db, user.id)
+      const token = await createSession(db, user.id, request)
       return json({ user: pubSelf(user) }, 200, {
         'Set-Cookie': cookieOf(token),
       })
@@ -150,6 +151,27 @@ export default {
 
     // 必须先改密码
     if (user.must_change_pw) return json({ error: '请先修改密码', code: 'MUST_CHANGE_PW' }, 403)
+
+    // 登录设备:只能查看和踢出自己的会话
+    if (pathname === '/api/sessions' && request.method === 'GET') {
+      const { results } = await db
+        .prepare('SELECT substr(token_hash,1,16) AS sid, ua, ip, created_at, last_seen, expires_at FROM sessions WHERE user_id = ? AND expires_at > ? ORDER BY last_seen DESC')
+        .bind(user.id, Math.floor(Date.now() / 1000))
+        .all()
+      return json({ sessions: results.map((s) => ({ ...s, current: s.sid === user.sid })) }, 200, renew)
+    }
+    if (pathname === '/api/sessions/revoke-others' && request.method === 'POST') {
+      const r = await destroyUserSessions(db, user.id, tokenFrom(request))
+      await audit(db, user, 'session.revoke_others', user.username, { count: r.meta.changes })
+      return json({ ok: true, count: r.meta.changes }, 200, renew)
+    }
+    const sm = pathname.match(/^\/api\/sessions\/([0-9a-f]{16})$/)
+    if (sm && request.method === 'DELETE') {
+      if (sm[1] === user.sid) return json({ error: '不能踢出当前设备,请使用退出登录' }, 400)
+      if (!(await killSession(db, sm[1], user.id))) return json({ error: '会话不存在' }, 404)
+      await audit(db, user, 'session.revoke', user.username, { sid: sm[1] })
+      return json({ ok: true }, 200, renew)
+    }
 
     if (pathname.startsWith('/api/admin/')) {
       if (user.role !== 'admin') return json({ error: '无权限' }, 403)

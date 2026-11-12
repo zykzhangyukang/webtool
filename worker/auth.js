@@ -30,13 +30,15 @@ export function safeEqual(a, b) {
   return diff === 0
 }
 
-export async function createSession(db, userId) {
+export async function createSession(db, userId, request) {
   const token = toHex(crypto.getRandomValues(new Uint8Array(32)))
-  const expires = Math.floor(Date.now() / 1000) + SESSION_TTL
+  const now = Math.floor(Date.now() / 1000)
+  const ua = (request?.headers.get('User-Agent') || '').slice(0, 255)
+  const ip = request?.headers.get('CF-Connecting-IP') || null
   // 库里只存 token 的哈希,即使数据库泄露也无法直接冒用会话
   await db
-    .prepare('INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)')
-    .bind(await sha256(token), userId, expires)
+    .prepare('INSERT INTO sessions (token_hash, user_id, expires_at, ua, ip, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .bind(await sha256(token), userId, now + SESSION_TTL, ua, ip, now, now)
     .run()
   return token
 }
@@ -56,7 +58,7 @@ export async function currentUser(db, request) {
   return db
     .prepare(
       `SELECT u.id, u.username, u.role, u.permissions, u.must_change_pw, u.status,
-              u.expires_at AS acct_expires, s.expires_at FROM sessions s
+              u.expires_at AS acct_expires, s.expires_at, s.token_hash, s.last_seen FROM sessions s
        JOIN users u ON u.id = s.user_id
        WHERE s.token_hash = ? AND s.expires_at > ?`,
     )
@@ -64,18 +66,21 @@ export async function currentUser(db, request) {
     .first()
     .then(async (row) => {
       if (!row) return null
-      const { expires_at, acct_expires, status, ...user } = row
+      const { expires_at, acct_expires, status, token_hash, last_seen, ...user } = row
       // 停用或账号到期:视为未登录
       if (status !== 'active' || (acct_expires && acct_expires <= now)) return null
       user.expires_at = acct_expires
+      user.sid = token_hash.slice(0, 16)
       // 滑动续期:剩余不足一半有效期时顺延,并带回新的 Cookie 过期时间
-      if (expires_at - now < SESSION_TTL / 2) {
+      const renew = expires_at - now < SESSION_TTL / 2
+      // 最后活跃时间节流:超过 5 分钟才写库
+      if (renew || now - (last_seen || 0) > 300) {
         await db
-          .prepare('UPDATE sessions SET expires_at = ? WHERE token_hash = ?')
-          .bind(now + SESSION_TTL, await sha256(token))
+   .prepare('UPDATE sessions SET expires_at = ?, last_seen = ? WHERE token_hash = ?')
+          .bind(renew ? now + SESSION_TTL : expires_at, now, token_hash)
           .run()
-        user.renewCookie = cookieOf(token)
       }
+      if (renew) user.renewCookie = cookieOf(token)
       return user
     })
 }
@@ -138,3 +143,12 @@ export async function recordFail(db, key) {
     .run()
 }
 export const clearFails = (db, key) => db.prepare('DELETE FROM login_attempts WHERE key = ?').bind(key).run()
+
+// 按 sid(token_hash 前 16 位)删除会话;userId 为 null 时不限用户。返回删除行数
+export async function killSession(db, sid, userId = null) {
+  if (!/^[0-9a-f]{16}$/.test(sid)) return 0
+  const r = userId
+    ? await db.prepare("DELETE FROM sessions WHERE token_hash LIKE ? || '%' AND user_id = ?").bind(sid, userId).run()
+    : await db.prepare("DELETE FROM sessions WHERE token_hash LIKE ? || '%'").bind(sid).run()
+  return r.meta.changes
+}

@@ -37,5 +37,5 @@ History uses short imperative subjects. Use short imperative subjects such as `A
 
 ## Users, Permissions & Migrations
 - Roles: `admin` (all tools, manages users) and `user` (tools listed in `permissions`, JSON like `{"tools":["json"]}` or `*`). Tool access is enforced in the UI only; `/api/admin/*` is enforced server-side in `worker/admin.js`.
-- Audit events go through `audit()` in `worker/auth.js`; login throttling uses `login_attempts`.
+- Audit events go through `audit()` in `worker/auth.js`; login throttling uses `login_attempts`. Sessions record UA/IP/last_seen; users manage devices at `/sessions`, admins at the users page (sid = first 16 chars of `token_hash`).
 - Schema changes to an existing D1 go in `migrations/NNN_*.sql` (run once, not idempotent) and must also be reflected in `schema.sql`. Run the migration with `--remote` before `npm run deploy`.

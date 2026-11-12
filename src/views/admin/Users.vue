@@ -2,10 +2,12 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { api, auth } from '../../auth'
 import { tools } from '../../tools/registry'
+import SessionTable from '../../components/SessionTable.vue'
 
 const tab = ref('users')
 const users = ref([])
 const audit = reactive({ items: [], total: 0, page: 1, size: 50 })
+const sessions = ref([])
 const error = ref('')
 const msg = ref('')
 
@@ -54,6 +56,20 @@ async function loadUsers() {
 async function loadAudit(page = 1) {
   Object.assign(audit, await api(`/api/admin/audit?page=${page}`))
 }
+async function loadSessions() {
+  sessions.value = (await api('/api/admin/sessions')).sessions
+}
+function kickSession(s) {
+  if (!confirm(`确定踢出 ${s.username} 的该设备?`)) return
+  error.value = ''
+  msg.value = ''
+  api(`/api/admin/sessions/${s.sid}`, { method: 'DELETE' })
+    .then(() => {
+      msg.value = '已踢出'
+      return loadSessions()
+    })
+    .catch((e) => (error.value = e.message))
+}
 async function run(fn, ok) {
   error.value = ''
   msg.value = ''
@@ -91,6 +107,7 @@ const actionLabel = {
   'login.ok': '登录成功', 'login.fail': '登录失败', 'login.locked': '登录锁定',
   'user.create': '创建用户', 'user.update': '修改用户', 'user.disable': '停用用户', 'user.enable': '启用用户',
   'user.reset_password': '重置密码', 'user.change_password': '修改密码', 'user.delete': '删除用户',
+  'session.revoke': '踢出自己的设备', 'session.revoke_others': '踢出其他设备', 'session.admin_kick': '管理员踢出会话',
 }
 const expired = (u) => u.expires_at && u.expires_at * 1000 <= Date.now()
 const toolCount = (u) => (u.permissions === '*' ? '全部' : `${u.permissions.tools.length} 个`)
@@ -99,6 +116,7 @@ onMounted(() => run(loadUsers))
 function showTab(t) {
   tab.value = t
   if (t === 'audit') loadAudit(1).catch((e) => (error.value = e.message))
+  if (t === 'sessions') loadSessions().catch((e) => (error.value = e.message))
 }
 </script>
 
@@ -113,6 +131,7 @@ function showTab(t) {
     <ul class="nav nav-tabs mb-3">
       <li class="nav-item"><button class="nav-link" :class="{ active: tab === 'users' }" @click="showTab('users')">用户</button></li>
       <li class="nav-item"><button class="nav-link" :class="{ active: tab === 'audit' }" @click="showTab('audit')">审计日志</button></li>
+      <li class="nav-item"><button class="nav-link" :class="{ active: tab === 'sessions' }" @click="showTab('sessions')">在线会话</button></li>
     </ul>
     <div v-if="error" class="alert alert-danger py-2">{{ error }}</div>
     <div v-if="msg" class="alert alert-success py-2">{{ msg }}</div>
@@ -142,6 +161,8 @@ function showTab(t) {
         </tbody>
       </table>
     </div>
+
+    <SessionTable v-else-if="tab === 'sessions'" :sessions="sessions" admin @kick="kickSession" />
 
     <div v-else>
       <div class="table-responsive">
