@@ -4,7 +4,7 @@
 WebTool is a Vue 3 + Bootstrap 5 SPA served by a Cloudflare Worker with a D1 database.
 - `src/` frontend: `main.js`, `router.js` (vue-router, auth guard), `auth.js` (session state and `api()` helper), `App.vue`.
 - `src/views/` pages (`Home.vue`, `Login.vue`); `src/views/tools/` one component per tool.
-- `src/tools/registry.js` is the tool list; `src/tools/*.js` holds pure logic such as `jsonToJava.js`.
+- `src/tools/registry.js` is the tool list; `src/tools/*.js` holds pure logic.
 - `worker/` backend: `index.js` (API routes), `auth.js` (PBKDF2 hashing, sessions).
 - `schema.sql` D1 tables; `wrangler.jsonc` Worker, assets and D1 binding; `dist/` is build output.
 
@@ -39,3 +39,7 @@ History uses short imperative subjects. Use short imperative subjects such as `A
 - Roles: `admin` (all tools, manages users) and `user` (tools listed in `permissions`, JSON like `{"tools":["json"]}` or `*`). Tool access is enforced in the UI only; `/api/admin/*` is enforced server-side in `worker/admin.js`.
 - Audit events go through `audit()` in `worker/auth.js`; login throttling uses `login_attempts`. Sessions record UA/IP/last_seen; users manage devices at `/sessions`, admins at the users page (sid = first 16 chars of `token_hash`).
 - Schema changes to an existing D1 go in `migrations/NNN_*.sql` (run once, not idempotent) and must also be reflected in `schema.sql`. Run the migration with `--remote` before `npm run deploy`.
+
+## Monaco Notes
+- Import Monaco only via `src/tools/monaco.js` (core editor, no language services). Package exports map `monaco-editor/*` to `esm/vs/*.js`, so use e.g. `monaco-editor/editor/editor.worker`. Register extra editor features there if an action is missing.
+

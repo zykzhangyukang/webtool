@@ -1,6 +1,6 @@
 import { hashPassword, newSalt, destroyUserSessions, killSession, audit } from './auth.js'
 
-const TOOL_IDS = ['json', 'sql', 'yaml', 'timestamp', 'cron', 'base64', 'uuid', 'jwt', 'hash', 'url', 'regex', 'diff']
+const TOOL_IDS = ['json', 'timestamp', 'editor']
 
 // 校验并规范化权限:'*' 或 {"tools":[...]}
 function normPerms(p) {
@@ -173,3 +173,4 @@ export async function handleAdmin({ request, url, db, user, json }) {
 
   return json({ error: '接口不存在' }, 404)
 }
+

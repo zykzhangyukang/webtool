@@ -10,19 +10,23 @@ const q = ref('')
 const idx = ref(0)
 const input = ref(null)
 
-// 简单子序列模糊匹配:"jw" 能匹配 "JWT 解码"
+// 简单子序列模糊匹配:"js" 能匹配 "JSON 格式化"
 function score(t, k) {
-  const hay = `${t.name} ${t.id} ${t.desc} ${t.category}`.toLowerCase()
+  const hay = `${t.name} ${t.id} ${t.id === 'home' ? '首页 主页 home' : ''} ${t.desc} ${t.category}`.toLowerCase()
   if (hay.includes(k)) return 100 - hay.indexOf(k)
   let i = 0
   for (const ch of hay) if (ch === k[i]) i++
   return i === k.length ? 1 : 0
 }
 
+// 主页作为固定入口,放在第一位
+const home = { id: 'home', name: '主页', desc: '返回工具列表', icon: 'bi-house', category: '导航', to: '/' }
+const all = () => [home, ...allowedTools(auth.user)]
+
 const results = computed(() => {
   const k = q.value.trim().toLowerCase()
-  if (!k) return allowedTools(auth.user)
-  return allowedTools(auth.user)
+  if (!k) return all()
+  return all()
     .map((t) => [t, score(t, k)])
     .filter(([, s]) => s > 0)
     .sort((a, b) => b[1] - a[1])
@@ -44,7 +48,7 @@ const hide = () => (open.value = false)
 function go(t) {
   if (!t) return
   hide()
-  router.push(`/tools/${t.id}`)
+  router.push(t.to || `/tools/${t.id}`)
 }
 
 function onKey(e) {
@@ -64,8 +68,8 @@ function onInputKey(e) {
   e.preventDefault()
 }
 
-onMounted(() => window.addEventListener('keydown', onKey))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
+onMounted(() => window.addEventListener('keydown', onKey, true))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
 </script>
 
 <template>
@@ -75,7 +79,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         ref="input"
         v-model="q"
         class="form-control form-control-lg border-0 border-bottom rounded-0"
-        placeholder="跳转到工具...  (Esc 关闭)"
+        placeholder="跳转到主页或工具...  (Esc 关闭)"
         autocomplete="off"
         spellcheck="false"
         @keydown="onInputKey"

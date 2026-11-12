@@ -19,7 +19,7 @@ const groups = computed(() => {
 })
 const presets = {
   full: { label: '完整使用', tools: () => tools.map((t) => t.id) },
-  view: { label: '只读查看类', tools: () => ['json', 'timestamp', 'base64', 'jwt'] },
+  view: { label: '只读查看类', tools: () => ['json', 'timestamp'] },
   none: { label: '清空', tools: () => [] },
 }
 

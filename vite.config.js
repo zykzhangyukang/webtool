@@ -3,6 +3,8 @@ import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
   plugins: [vue()],
+  // Monaco 是深层路径导入,依赖预构建会反复失效(504 Outdated Optimize Dep),开发时直接按原生 ESM 加载
+  optimizeDeps: { exclude: ['monaco-editor'] },
   server: {
     // 本地开发时把 /api 代理到 wrangler dev
     proxy: {
@@ -19,3 +21,4 @@ export default defineConfig({
     },
   },
 })
+

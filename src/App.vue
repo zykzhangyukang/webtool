@@ -7,6 +7,8 @@ import CommandPalette from './components/CommandPalette.vue'
 const themeIcon = { auto: 'bi-circle-half', light: 'bi-sun', dark: 'bi-moon-stars' }
 const themeLabel = { auto: '跟随系统', light: '浅色', dark: '深色' }
 
+// 全屏工具:隐藏导航栏和容器边距
+const fullscreen = ['json', 'editor']
 const router = useRouter()
 
 async function onLogout() {
@@ -18,7 +20,7 @@ async function onLogout() {
 <template>
   <div v-if="nav.loading" class="nav-progress"></div>
   <CommandPalette />
-  <nav class="navbar navbar-expand bg-body-tertiary border-bottom">
+  <nav v-if="$route.matched.length && !fullscreen.includes($route.meta.toolId)" class="navbar navbar-expand bg-body-tertiary border-bottom">
     <div class="container">
       <router-link class="navbar-brand fw-semibold" to="/">
         <i class="bi bi-tools me-2"></i>WebTool
@@ -51,7 +53,7 @@ async function onLogout() {
       </div>
     </div>
   </nav>
-  <main class="container py-4">
+  <main :class="fullscreen.includes($route.meta.toolId) ? 'p-0' : 'container py-4'">
     <router-view />
   </main>
 </template>
@@ -68,3 +70,6 @@ async function onLogout() {
   to { width: 90%; opacity: 1; }
 }
 </style>
+
+
+

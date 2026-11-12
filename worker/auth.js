@@ -91,7 +91,7 @@ export const purgeExpired = async (db) => {
   await db.prepare('DELETE FROM sessions WHERE expires_at <= ?').bind(now).run()
   await db.prepare('DELETE FROM login_attempts WHERE ? - window_start >= 600').bind(now).run()
   // 审计日志保留 180 天
-  await db.prepare('DELETE FROM audit_log WHERE ts < ?').bind(now - 180 * 86400).run()
+  await db.prepare('DELETE FROM audit_log WHERE ts < ?').bind(now - 7 * 86400).run()
 }
 
 export async function destroySession(db, request) {
@@ -152,3 +152,4 @@ export async function killSession(db, sid, userId = null) {
     : await db.prepare("DELETE FROM sessions WHERE token_hash LIKE ? || '%'").bind(sid).run()
   return r.meta.changes
 }
+
